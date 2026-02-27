@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>出面・利益管理（複数従業員）</title>
+  <style>
+    :root{
+      --bg:#0b1220; --panel:#111a2c; --panel2:#0f182a;
+      --line:#22304a; --text:#eef3ff; --muted:#a9b6d3;
+      --accent:#f59e0b; --good:#22c55e; --bad:#ef4444; --info:#60a5fa;
+      --radius:16px; --pad:14px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Segoe UI", Roboto, sans-serif;
+    }
+    html,body{height:100%;}
+    body{margin:0; font-family:var(--sans); background:linear-gradient(180deg,#0b1220 0%, #0a1020 100%); color:var(--text);}
+    header{
+      position:sticky; top:0; z-index:20;
+      padding:18px var(--pad);
+      background:rgba(11,18,32,.92);
+      backdrop-filter: blur(8px);
+      border-bottom:1px solid rgba(34,48,74,.6);
+    }
+    h1{margin:0; font-size:28px; letter-spacing:.5px;}
+    .sub{margin-top:6px; color:var(--muted); font-size:13px;}
+    .wrap{max-width:1100px; margin:0 auto; padding:14px var(--pad) 70px;}
+    .card{
+      background:linear-gradient(180deg,rgba(17,26,44,.92), rgba(14,22,40,.92));
+      border:1px solid rgba(34,48,74,.85);
+      border-radius:var(--radius);
+      padding:var(--pad);
+      margin:14px 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+    .row.between{justify-content:space-between;}
+    .grow{flex:1;}
+    label{display:block; font-size:12px; color:var(--muted); margin:0 0 6px;}
+    input, select, button{
+      border-radius:12px; border:1px solid rgba(34,48,74,.9);
+      background:rgba(10,16,32,.75); color:var(--text);
+      padding:12px; font-size:16px;
+      outline:none;
+    }
+    input::placeholder{color:rgba(169,182,211,.55);}
+    input[type="number"]{font-variant-numeric: tabular-nums;}
+    button{
+      background:rgba(15,24,42,.9);
+      cursor:pointer;
+      font-weight:700;
+    }
+    .btn-accent{background:linear-gradient(180deg,#f59e0b,#e58e06); color:#1b1305; border:none;}
+    .btn-ghost{background:transparent;}
+    .btn-blue{background:linear-gradient(180deg,#3b82f6,#2563eb); border:none;}
+    .btn-red{background:linear-gradient(180deg,#ef4444,#dc2626); border:none;}
+    .btn{display:inline-flex; align-items:center; gap:8px;}
+    .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      background:rgba(10,16,32,.55); border:1px solid rgba(34,48,74,.9);
+      padding:8px 10px; border-radius:999px; color:var(--muted); font-size:13px;
+    }
+    .kpi{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px;}
+    .kpi .box{padding:12px; border-radius:14px; border:1px solid rgba(34,48,74,.85); background:rgba(10,16,32,.55);}
+    .kpi .t{font-size:12px; color:var(--muted);}
+    .kpi .v{font-size:18px; font-weight:800; margin-top:6px; font-variant-numeric:tabular-nums;}
+    .v.good{color:var(--good);} .v.bad{color:var(--bad);} .v.info{color:var(--info);}
+    .hr{height:1px; background:rgba(34,48,74,.9); margin:12px 0;}
+    .empTitle{font-size:32px; font-weight:900; margin:8px 0 10px;}
+    .tableWrap{
+      overflow-x:auto;
+      border-radius:14px;
+      border:1px solid rgba(34,48,74,.85);
+      background:rgba(10,16,32,.35);
+    }
+    table{border-collapse:separate; border-spacing:0; min-width:1050px; width:100%;}
+    th,td{padding:10px 10px; border-bottom:1px solid rgba(34,48,74,.65); vertical-align:middle;}
+    th{position:sticky; top:0; background:rgba(15,24,42,.92); text-align:center; font-size:13px; color:var(--muted); z-index:5;}
+    tr:last-child td{border-bottom:none;}
+    td{font-size:14px;}
+    td .mini{font-size:12px; color:var(--muted);}
+    .td-actions{white-space:nowrap; text-align:center;}
+    .in-cell{width:120px; padding:10px; font-size:15px;}
+    .in-small{width:92px; padding:10px; font-size:15px;}
+    .in-date{width:140px; padding:10px; font-size:15px;}
+    .right{text-align:right;}
+    .center{text-align:center;}
+    .money{font-variant-numeric: tabular-nums;}
+    .green{color:var(--good);} .red{color:var(--bad);} .blue{color:var(--info);}
+    .footerBar{
+      position:fixed; left:0; right:0; bottom:0; z-index:30;
+      background:rgba(11,18,32,.92);
+      border-top:1px solid rgba(34,48,74,.6);
+      backdrop-filter: blur(8px);
+      padding:10px var(--pad);
+    }
+    .footerBar .wrap{padding:0; max-width:1100px;}
+    .muted{color:var(--muted);}
+    .tiny{font-size:12px;}
+    .modalBg{
+      position:fixed; inset:0; background:rgba(0,0,0,.55);
+      display:none; align-items:center; justify-content:center; z-index:50;
+      padding:14px;
+    }
+    .modal{max-width:760px; width:100%; background:#0b1220; border:1px solid rgba(34,48,74,.9);
+      border-radius:18px; overflow:hidden; box-shadow:0 30px 60px rgba(0,0,0,.5);}
+    .modalHead{padding:14px; border-bottom:1px solid rgba(34,48,74,.75); display:flex; align-items:center; justify-content:space-between;}
+    .modalBody{padding:14px;}
+    .slip{
+      background:#fff; color:#111; border-radius:10px; padding:18px;
+      font-family: var(--sans);
+    }
+    .slip h2{margin:0; text-align:center; font-size:28px; letter-spacing:1px;}
+    .slip .period{margin:6px 0 14px; text-align:center; font-size:14px;}
+    .slip .topline{display:flex; justify-content:space-between; align-items:flex-end; margin:10px 0 14px;}
+    .slip .name{font-size:26px; font-weight:800;}
+    .slip .sum{font-size:30px; font-weight:900;}
+    .slip hr{border:none; border-top:2px solid #222; margin:10px 0 16px;}
+    .slip table{min-width:auto; width:100%; border-collapse:collapse;}
+    .slip td,.slip th{border:1px solid #222; padding:10px; font-size:14px;}
+    .slip th{background:#f4f4f4; color:#111;}
+    .slip .sectionTitle{font-size:16px; font-weight:800; margin:14px 0 8px;}
+    .slip .neg{color:#d10000; font-weight:800;}
+    .slip .bottomPay{display:flex; justify-content:space-between; align-items:flex-end; margin-top:18px;}
+    .slip .bottomPay .label{font-size:22px; font-weight:900;}
+    .slip .bottomPay .amt{font-size:44px; font-weight:900; border-bottom:3px solid #111; padding:0 8px 4px;}
+    @media print{
+      body{background:#fff;}
+      header,.footerBar,.card:not(.printOnly),.modalHead{display:none !important;}
+      .modalBg{display:block !important; background:#fff !important; padding:0 !important;}
+      .modal{box-shadow:none !important; border:none !important; border-radius:0 !important;}
+      .modalBody{padding:0 !important;}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="padding:0 var(--pad);">
+    <h1>出面・利益管理（複数従業員）</h1>
+    <div class="sub">日別入力 → 月次集計（個人／全体）・給与明細（表示／印刷）　※端末内保存（localStorage）</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="card">
+    <div class="row between">
+      <div class="row">
+        <div style="min-width:170px;">
+          <label>対象月</label>
+          <input id="month" type="month" />
+        </div>
+        <div class="pill">売上/人工 <b id="kSalesPerMan">¥16,000</b></div>
+        <div class="pill">売上 残業単価/1h <b id="kSalesOt">¥2,500</b></div>
+        <div class="pill">残業 代/1h <b id="kPayOt">¥2,031</b></div>
+        <div class="pill">雇用保険率 <b id="kEI">1.85%</b></div>
+      </div>
+      <button class="btn btn-ghost" id="btnSettings">⚙︎ 係数</button>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="row">
+      <div class="grow" style="min-width:220px;">
+        <label>従業員名</label>
+        <input id="newEmpName" placeholder="名前" />
+      </div>
+      <button class="btn btn-blue" id="btnAddEmp">追加</button>
+
+      <div style="min-width:240px;">
+        <label>（任意）給与の選択肢（カンマ区切り）</label>
+        <input id="salaryChoices" placeholder="例: 10500,13000" value="10500,13000" />
+      </div>
+    </div>
+    <div class="tiny muted" style="margin-top:10px;">
+      ※「日追加」は確認なしで行を追加します。日付はデフォルトで“対象月の今日（なければ1日）”。
+    </div>
+  </div>
+
+  <div id="empArea"></div>
+
+</div>
+
+<div class="footerBar">
+  <div class="wrap">
+    <div class="row between">
+      <div class="row">
+        <div class="pill">全体 売上合計 <b class="money" id="totSales">¥0</b></div>
+        <div class="pill">全体 給与合計 <b class="money" id="totPay">¥0</b></div>
+        <div class="pill">全体 控除合計 <b class="money red" id="totDed">¥0</b></div>
+        <div class="pill">全体 粗利 <b class="money green" id="totGp">¥0</b></div>
+      </div>
+      <div class="row">
+        <button class="btn btn-ghost" id="btnExport">CSV</button>
+        <button class="btn btn-blue" id="btnShowSummary">月次集計</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modalBg" id="settingsBg" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modalHead">
+      <b>係数設定（保存されます）</b>
+      <button class="btn btn-ghost" id="settingsClose">✕</button>
+    </div>
+    <div class="modalBody">
+      <div class="row">
+        <div class="grow">
+          <label>売上/人工（円）</label>
+          <input id="setSalesPerMan" type="number" />
+        </div>
+        <div class="grow">
+          <label>売上 残業単価（円/1h）</label>
+          <input id="setSalesOt" type="number" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="grow">
+          <label>残業代（円/1h）</label>
+          <input id="setPayOt" type="number" />
+        </div>
+        <div class="grow">
+          <label>雇用保険率（%）</label>
+          <input id="setEi" type="number" step="0.01" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="grow">
+          <label>受取消費税（売上×%）</label>
+          <input id="setVatIn" type="number" step="0.1" />
+        </div>
+        <div class="grow">
+          <label>粗利から引く税（給与×%）</label>
+          <input id="setPayTax" type="number" step="0.1" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:14px; justify-content:flex-end;">
+        <button class="btn btn-blue" id="settingsSave">保存</button>
+      </div>
+      <div class="tiny muted" style="margin-top:6px;">※小数はすべて四捨五入（Math.round）</div>
+    </div>
+  </div>
+</div>
+
+<!-- Summary modal -->
+<div class="modalBg" id="summaryBg">
+  <div class="modal">
+    <div class="modalHead">
+      <b id="summaryTitle">月次集計</b>
+      <button class="btn btn-ghost" id="summaryClose">✕</button>
+    </div>
+    <div class="modalBody">
+      <div id="summaryBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Payslip modal -->
+<div class="modalBg" id="slipBg">
+  <div class="modal">
+    <div class="modalHead">
+      <b>給与明細プレビュー</b>
+      <div class="row">
+        <button class="btn btn-blue" id="btnPrintSlip">印刷 / 保存</button>
+        <button class="btn btn-ghost" id="slipClose">✕</button>
+      </div>
+    </div>
+    <div class="modalBody">
+      <div id="slipBody"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = "deme_profit_app_v2";
+  const fmtYen = (n)=> "¥" + (Number(n||0)).toLocaleString("ja-JP");
+  const rint = (n)=> Math.round(Number(n||0));
+  const pad2 = (n)=> String(n).padStart(2,"0");
+  const toISODate = (d)=> `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  const toSlash = (iso)=> iso.replaceAll("-", "/");
+  const monthKey = (ym)=> ym; // "2026-02"
+  const parseMonth = (ym)=> {
+    const [y,m] = ym.split("-").map(Number);
+    return {y, m};
+  };
+  const daysInMonth = (y,m)=> new Date(y, m, 0).getDate(); // m: 1-12
+  const todayISO = ()=> toISODate(new Date());
+
+  const defaultSettings = {
+    salesPerMan: 16000,
+    salesOtPerH: 2500,
+    payOtPerH: 2031,
+    eiRate: 0.0185,
+    vatInRate: 0.10,     // 受取消費税：売上×10%
+    payTaxRate: 0.10     // 粗利から引く：給与×10%
+  };
+
+  const load = ()=>{
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return null;
+      return JSON.parse(raw);
+    }catch(e){ return null; }
+  };
+  const save = ()=>{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  };
+
+  const state = load() || {
+    settings: {...defaultSettings},
+    salaryChoices: [10500,13000],
+    employees: [
+      { id: crypto.randomUUID(), name: "濱村拓也", defaultDaily: 10500, months:{} },
+      { id: crypto.randomUUID(), name: "永田 俊介", defaultDaily: 13000, months:{} },
+      { id: crypto.randomUUID(), name: "演村拓也", defaultDaily: 10500, months:{} },
+    ]
+  };
+
+  // Ensure month structure
+  const ensureMonth = (emp, ym)=>{
+    if(!emp.months) emp.months = {};
+    if(!emp.months[monthKey(ym)]){
+      emp.months[monthKey(ym)] = {
+        monthIncomeTax: 0,   // 月次：所得税（手入力）
+        monthAdvance: 0,     // 月次：前払金（手入力）
+        rows: []             // 日別
+      };
+    }
+    return emp.months[monthKey(ym)];
+  };
+
+  // UI refs
+  const elMonth = document.getElementById("month");
+  const elEmpArea = document.getElementById("empArea");
+  const elNewEmpName = document.getElementById("newEmpName");
+  const elAddEmp = document.getElementById("btnAddEmp");
+  const elSalaryChoices = document.getElementById("salaryChoices");
+  const elTotSales = document.getElementById("totSales");
+  const elTotPay = document.getElementById("totPay");
+  const elTotDed = document.getElementById("totDed");
+  const elTotGp = document.getElementById("totGp");
+  const elExport = document.getElementById("btnExport");
+  const elShowSummary = document.getElementById("btnShowSummary");
+
+  // settings modal
+  const settingsBg = document.getElementById("settingsBg");
+  const btnSettings = document.getElementById("btnSettings");
+  const settingsClose = document.getElementById("settingsClose");
+  const settingsSave = document.getElementById("settingsSave");
+  const setSalesPerMan = document.getElementById("setSalesPerMan");
+  const setSalesOt = document.getElementById("setSalesOt");
+  const setPayOt = document.getElementById("setPayOt");
+  const setEi = document.getElementById("setEi");
+  const setVatIn = document.getElementById("setVatIn");
+  const setPayTax = document.getElementById("setPayTax");
+
+  // summary modal
+  const summaryBg = document.getElementById("summaryBg");
+  const summaryClose = document.getElementById("summaryClose");
+  const summaryBody = document.getElementById("summaryBody");
+  const summaryTitle = document.getElementById("summaryTitle");
+
+  // slip modal
+  const slipBg = document.getElementById("slipBg");
+  const slipClose = document.getElementById("slipClose");
+  const slipBody = document.getElementById("slipBody");
+  const btnPrintSlip = document.getElementById("btnPrintSlip");
+
+  // top pills
+  const kSalesPerMan = document.getElementById("kSalesPerMan");
+  const kSalesOt = document.getElementById("kSalesOt");
+  const kPayOt = document.getElementById("kPayOt");
+  const kEI = document.getElementById("kEI");
+
+  // init month default
+  const now = new Date();
+  const ymNow = `${now.getFullYear()}-${pad2(now.getMonth()+1)}`;
+  elMonth.value = ymNow;
+
+  const parseChoices = ()=>{
+    const v = elSalaryChoices.value || "";
+    const arr = v.split(",").map(s=>rint(s.trim())).filter(n=>Number.isFinite(n)&&n>0);
+    if(arr.length) state.salaryChoices = arr;
+  };
+
+  const getMonthDefaultDate = ()=>{
+    const ym = elMonth.value;
+    const {y,m} = parseMonth(ym);
+    const t = new Date();
+    const same = (t.getFullYear()===y && (t.getMonth()+1)===m);
+    const day = same ? t.getDate() : 1;
+    return `${y}-${pad2(m)}-${pad2(day)}`;
+  };
+
+  const calcRow = (row, settings)=>{
+    const man = rint(row.man);
+    const otH = Number(row.otH||0);
+    const base = rint(row.baseDaily);
+    const adv = rint(row.advance||0);
+
+    const sales = rint(man * settings.salesPerMan + otH * settings.salesOtPerH);
+    const vatIn = rint(sales * settings.vatInRate);
+
+    const basePay = rint(man>0 ? base : 0);
+    const otPay = rint(otH * settings.payOtPerH);
+    const payTotal = rint(basePay + otPay);
+
+    const ei = rint(payTotal * settings.eiRate);
+    const payTax = rint(payTotal * settings.payTaxRate);
+
+    // “粗利”= 売上 - 給与 - (給与×10%)  ※要望どおり
+    const gp = rint(sales - payTotal - payTax);
+
+    return { sales, vatIn, basePay, otPay, payTotal, ei, payTax, gp, adv };
+  };
+
+  const calcEmployeeMonth = (emp, ym)=>{
+    const mobj = ensureMonth(emp, ym);
+    const s = state.settings;
+
+    let sumSales=0, sumVatIn=0, sumBase=0, sumOtPay=0, sumPay=0, sumEi=0, sumPayTax=0, sumGp=0, sumAdv=0;
+    let workDays=0, sumOtH=0;
+
+    for(const row of mobj.rows){
+      const c = calcRow(row, s);
+      sumSales += c.sales;
+      sumVatIn += c.vatIn;
+      sumBase += c.basePay;
+      sumOtPay += c.otPay;
+      sumPay += c.payTotal;
+      sumEi += c.ei;
+      sumPayTax += c.payTax;
+      sumGp += c.gp;
+      sumAdv += c.adv;
+      if(rint(row.man)>0) workDays += 1;
+      sumOtH += Number(row.otH||0);
+    }
+
+    const monthIncomeTax = rint(mobj.monthIncomeTax||0);
+    const monthAdvance = rint(mobj.monthAdvance||0);
+
+    // 給与明細の「控除」＝ 雇用保険 + 所得税 + 前払金（各日＋月次）
+    const dedTotal = rint(sumEi + monthIncomeTax + sumAdv + monthAdvance);
+    const netPay = rint(sumPay - dedTotal);
+
+    return {
+      sumSales:rint(sumSales),
+      sumVatIn:rint(sumVatIn),
+      sumBase:rint(sumBase),
+      sumOtPay:rint(sumOtPay),
+      sumPay:rint(sumPay),
+      sumEi:rint(sumEi),
+      sumPayTax:rint(sumPayTax),
+      sumGp:rint(sumGp),
+      sumAdv:rint(sumAdv),
+      monthIncomeTax,
+      monthAdvance,
+      workDays:rint(workDays),
+      sumOtH: rint(sumOtH),
+      dedTotal,
+      netPay
+    };
+  };
+
+  const calcAll = (ym)=>{
+    let ts=0,tp=0,td=0,tg=0;
+    for(const emp of state.employees){
+      const m = calcEmployeeMonth(emp, ym);
+      ts += m.sumSales;
+      tp += m.sumPay;
+      td += (m.sumEi + m.monthIncomeTax + m.sumAdv + m.monthAdvance);
+      tg += m.sumGp;
+    }
+    return { ts:rint(ts), tp:rint(tp), td:rint(td), tg:rint(tg) };
+  };
+
+  const openSettings = ()=>{
+    const s = state.settings;
+    setSalesPerMan.value = s.salesPerMan;
+    setSalesOt.value = s.salesOtPerH;
+    setPayOt.value = s.payOtPerH;
+    setEi.value = rint(s.eiRate*10000)/100; // %
+    setVatIn.value = rint(s.vatInRate*1000)/10; // %
+    setPayTax.value = rint(s.payTaxRate*1000)/10; // %
+    settingsBg.style.display = "flex";
+  };
+  const closeSettings = ()=> settingsBg.style.display = "none";
+
+  const openSummary = ()=>{
+    const ym = elMonth.value;
+    summaryTitle.textContent = `月次集計（${ym}）`;
+    const all = calcAll(ym);
+
+    const rows = state.employees.map(emp=>{
+      const m = calcEmployeeMonth(emp, ym);
+      return `
+        <div class="card" style="margin:10px 0;">
+          <div class="row between">
+            <div><b style="font-size:18px;">${escapeHtml(emp.name)}</b></div>
+            <button class="btn btn-blue" onclick="window.__openSlip('${emp.id}')">給与明細</button>
+          </div>
+          <div class="kpi" style="margin-top:10px;">
+            <div class="box"><div class="t">売上合計</div><div class="v info">${fmtYen(m.sumSales)}</div></div>
+            <div class="box"><div class="t">給与合計</div><div class="v">${fmtYen(m.sumPay)}</div></div>
+            <div class="box"><div class="t">控除合計（雇保+所得税+前払）</div><div class="v bad">${fmtYen(m.dedTotal)}</div></div>
+            <div class="box"><div class="t">粗利</div><div class="v good">${fmtYen(m.sumGp)}</div></div>
+          </div>
+          <div class="row" style="margin-top:10px;">
+            <div class="pill">出勤日数 <b>${m.workDays}日</b></div>
+            <div class="pill">残業時間 <b>${m.sumOtH}h</b></div>
+            <div class="pill">受取消費税（売上×${rint(state.settings.vatInRate*100)}%） <b class="green">${fmtYen(m.sumVatIn)}</b></div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    summaryBody.innerHTML = `
+      <div class="kpi">
+        <div class="box"><div class="t">全体 売上</div><div class="v info">${fmtYen(all.ts)}</div></div>
+        <div class="box"><div class="t">全体 給与</div><div class="v">${fmtYen(all.tp)}</div></div>
+        <div class="box"><div class="t">全体 控除</div><div class="v bad">${fmtYen(all.td)}</div></div>
+        <div class="box"><div class="t">全体 粗利</div><div class="v good">${fmtYen(all.tg)}</div></div>
+      </div>
+      <div style="margin-top:12px;">${rows}</div>
+    `;
+    summaryBg.style.display = "flex";
+  };
+  const closeSummary = ()=> summaryBg.style.display = "none";
+
+  const openSlip = (empId)=>{
+    const ym = elMonth.value;
+    const emp = state.employees.find(e=>e.id===empId);
+    if(!emp) return;
+    const mobj = ensureMonth(emp, ym);
+    const m = calcEmployeeMonth(emp, ym);
+
+    // 支給年月／支給日表示はテンプレ的に：翌月末（例）
+    const {y, m:mo} = parseMonth(ym);
+    const payDate = new Date(y, mo, 0); // 当月末
+    const dispPay = `${payDate.getFullYear()}年${payDate.getMonth()+1}月支給（${payDate.getMonth()+1}/${payDate.getDate()}）`;
+
+    slipBody.innerHTML = `
+      <div class="slip">
+        <h2>給与明細書</h2>
+        <div class="period">${y}年${mo}月分 / ${dispPay}</div>
+        <hr>
+        <div class="topline">
+          <div class="name">${escapeHtml(emp.name)} 様</div>
+          <div>
+            <div style="text-align:right; color:#666;">支給合計</div>
+            <div class="sum">${fmtYen(m.sumPay)}</div>
+          </div>
+        </div>
+
+        <table>
+          <tr>
+            <th style="width:50%;">支給項目</th>
+            <th>金額 / 詳細</th>
+          </tr>
+          <tr><td>出勤日数</td><td class="right">${m.workDays} 日</td></tr>
+          <tr><td>残業時間（合計）</td><td class="right">${m.sumOtH} H</td></tr>
+          <tr><td>基本給（日当計）</td><td class="right">${fmtYen(m.sumBase)}</td></tr>
+          <tr><td>残業手当</td><td class="right">${fmtYen(m.sumOtPay)}</td></tr>
+          <tr><td><b>総支給額</b></td><td class="right"><b>${fmtYen(m.sumPay)}</b></td></tr>
+        </table>
+
+        <div class="sectionTitle">控除項目</div>
+        <table>
+          <tr><th style="width:50%;">控除項目</th><th>金額</th></tr>
+          <tr><td>雇用保険料</td><td class="right"><span class="neg">▲ ${fmtYen(m.sumEi)}</span></td></tr>
+          <tr><td>所得税（手入力）</td><td class="right"><span class="neg">▲ ${fmtYen(m.monthIncomeTax)}</span></td></tr>
+          <tr><td>前払金（各日＋月次）</td><td class="right"><span class="neg">▲ ${fmtYen(m.sumAdv + m.monthAdvance)}</span></td></tr>
+          <tr><td><b>控除合計</b></td><td class="right"><b><span class="neg">▲ ${fmtYen(m.dedTotal)}</span></b></td></tr>
+        </table>
+
+        <hr>
+
+        <div class="bottomPay">
+          <div class="label">差引支給額（手取り）</div>
+          <div class="amt">${fmtYen(m.netPay)}</div>
+        </div>
+
+        <div style="margin-top:14px; font-size:12px; color:#444;">
+          ※この明細は端末内データから自動生成（小数は四捨五入）。<br>
+          ※粗利計算：粗利＝売上−給与−（給与×${rint(state.settings.payTaxRate*100)}%）
+        </div>
+      </div>
+    `;
+    slipBg.style.display = "flex";
+  };
+  const closeSlip = ()=> slipBg.style.display = "none";
+
+  window.__openSlip = openSlip;
+
+  const escapeHtml = (s)=> String(s||"").replace(/[&<>"']/g, m=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[m]));
+
+  const addEmployee = ()=>{
+    const name = (elNewEmpName.value||"").trim();
+    if(!name) return;
+    parseChoices();
+    const def = state.salaryChoices[0] || 10500;
+    state.employees.unshift({ id: crypto.randomUUID(), name, defaultDaily:def, months:{} });
+    elNewEmpName.value="";
+    save();
+    render();
+  };
+
+  const removeEmployee = (id)=>{
+    state.employees = state.employees.filter(e=>e.id!==id);
+    save();
+    render();
+  };
+
+  const addDayRow = (emp, ym)=>{
+    const mobj = ensureMonth(emp, ym);
+    const d = getMonthDefaultDate();
+    const baseChoices = state.salaryChoices.length ? state.salaryChoices : [emp.defaultDaily||10500, 13000];
+
+    // 追加時確認なし。重複日付OK（必要なら後で弾ける）
+    mobj.rows.unshift({
+      id: crypto.randomUUID(),
+      date: d,
+      man: 0,
+      otH: 0,
+      baseDaily: emp.defaultDaily || baseChoices[0] || 10500,
+      advance: 0
+    });
+    save();
+    render();
+  };
+
+  const deleteRow = (emp, ym, rowId)=>{
+    const mobj = ensureMonth(emp, ym);
+    mobj.rows = mobj.rows.filter(r=>r.id!==rowId);
+    save();
+    render();
+  };
+
+  const updateRow = (emp, ym, rowId, patch)=>{
+    const mobj = ensureMonth(emp, ym);
+    const row = mobj.rows.find(r=>r.id===rowId);
+    if(!row) return;
+    Object.assign(row, patch);
+    save();
+    // re-render small enough
+    render();
+  };
+
+  const updateMonthFields = (emp, ym, patch)=>{
+    const mobj = ensureMonth(emp, ym);
+    Object.assign(mobj, patch);
+    save();
+    render();
+  };
+
+  const buildEmployeeCard = (emp, ym)=>{
+    parseChoices();
+    const baseChoices = (state.salaryChoices.length ? state.salaryChoices : [10500,13000]).slice().sort((a,b)=>a-b);
+    const mobj = ensureMonth(emp, ym);
+    const m = calcEmployeeMonth(emp, ym);
+
+    const rowsHtml = mobj.rows.map(row=>{
+      const c = calcRow(row, state.settings);
+      const baseSel = `
+        <select class="in-cell" onchange="window.__empRow('${emp.id}','${row.id}','baseDaily', this.value)">
+          ${baseChoices.map(v=>`<option value="${v}" ${rint(row.baseDaily)===v?'selected':''}>${fmtYen(v)}</option>`).join("")}
+        </select>
+      `;
+      return `
+        <tr>
+          <td class="center">
+            <input class="in-date" type="date" value="${row.date}" onchange="window.__empRow('${emp.id}','${row.id}','date', this.value)" />
+          </td>
+          <td class="center">
+            <input class="in-small" type="number" value="${rint(row.man)}" min="0" step="1" onchange="window.__empRow('${emp.id}','${row.id}','man', this.value)" />
+          </td>
+          <td class="center">
+            <input class="in-small" type="number" value="${Number(row.otH||0)}" min="0" step="0.5" onchange="window.__empRow('${emp.id}','${row.id}','otH', this.value)" />
+          </td>
+          <td class="center">${baseSel}</td>
+          <td class="right money blue">${fmtYen(c.sales)}</td>
+          <td class="right money green">${fmtYen(c.vatIn)}</td>
+          <td class="right money">${fmtYen(c.payTotal)}</td>
+          <td class="right money">${fmtYen(c.ei)}</td>
+          <td class="right money red">${fmtYen(c.payTax)}</td>
+          <td class="center">
+            <input class="in-cell" type="number" value="${rint(row.advance||0)}" min="0" step="1000" onchange="window.__empRow('${emp.id}','${row.id}','advance', this.value)" />
+          </td>
+          <td class="right money ${c.gp>=0?'green':'red'}">${fmtYen(c.gp)}</td>
+          <td class="td-actions">
+            <button class="btn btn-red" onclick="window.__delRow('${emp.id}','${row.id}')">🗑</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    return `
+      <div class="card">
+        <div class="row between">
+          <div>
+            <div class="empTitle">${escapeHtml(emp.name)}</div>
+            <div class="row">
+              <div class="pill">出勤日数 <b>${m.workDays}日</b></div>
+              <div class="pill">残業時間 <b>${m.sumOtH}h</b></div>
+            </div>
+          </div>
+          <div class="row">
+            <button class="btn btn-accent" onclick="window.__addDay('${emp.id}')">日追加</button>
+            <button class="btn btn-blue" onclick="window.__openSlip('${emp.id}')">給与明細</button>
+            <button class="btn btn-ghost" onclick="window.__removeEmp('${emp.id}')">削除</button>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="row">
+          <div class="grow" style="min-width:220px;">
+            <label>月次：所得税（手入力）</label>
+            <input type="number" value="${rint(mobj.monthIncomeTax||0)}" step="100" min="0" onchange="window.__empMonth('${emp.id}','monthIncomeTax', this.value)" />
+          </div>
+          <div class="grow" style="min-width:220px;">
+            <label>月次：前払金（手入力）</label>
+            <input type="number" value="${rint(mobj.monthAdvance||0)}" step="1000" min="0" onchange="window.__empMonth('${emp.id}','monthAdvance', this.value)" />
+          </div>
+          <div class="grow" style="min-width:240px;">
+            <label>デフォルト給与/日（従業員）</label>
+            <select onchange="window.__empDefault('${emp.id}', this.value)">
+              ${baseChoices.map(v=>`<option value="${v}" ${rint(emp.defaultDaily)===v?'selected':''}>${fmtYen(v)}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+
+        <div class="kpi" style="margin-top:12px;">
+          <div class="box"><div class="t">売上合計</div><div class="v info">${fmtYen(m.sumSales)}</div></div>
+          <div class="box"><div class="t">給与合計</div><div class="v">${fmtYen(m.sumPay)}</div></div>
+          <div class="box"><div class="t">控除合計（雇保+所得税+前払）</div><div class="v bad">${fmtYen(m.dedTotal)}</div></div>
+          <div class="box"><div class="t">粗利</div><div class="v good">${fmtYen(m.sumGp)}</div></div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>人工</th>
+                <th>残業(h)</th>
+                <th>給与(選択)</th>
+                <th>売上(自動)</th>
+                <th>受取税(売上×${rint(state.settings.vatInRate*100)}%)</th>
+                <th>総支給(自動)</th>
+                <th>雇用保険(1.85%)</th>
+                <th>粗利控除(給与×${rint(state.settings.payTaxRate*100)}%)</th>
+                <th>前払金</th>
+                <th>粗利</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml || `<tr><td colspan="12" class="center muted" style="padding:18px;">日追加で入力を開始</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  };
+
+  // handlers exposed
+  window.__addDay = (empId)=>{
+    const ym = elMonth.value;
+    const emp = state.employees.find(e=>e.id===empId);
+    if(!emp) return;
+    addDayRow(emp, ym);
+  };
+  window.__delRow = (empId, rowId)=>{
+    const ym = elMonth.value;
+    const emp = state.employees.find(e=>e.id===empId);
+    if(!emp) return;
+    deleteRow(emp, ym, rowId);
+  };
+  window.__empRow = (empId, rowId, key, val)=>{
+    const ym = elMonth.value;
+    const emp = state.employees.find(e=>e.id===empId);
+    if(!emp) return;
+    const patch = {};
+    if(key==="man" || key==="baseDaily" || key==="advance") patch[key] = rint(val);
+    else if(key==="otH") patch[key] = Number(val||0);
+    else patch[key] = val;
+    updateRow(emp, ym, rowId, patch);
+  };
+  window.__empMonth = (empId, key, val)=>{
+    const ym = elMonth.value;
+    const emp = state.employees.find(e=>e.id===empId);
+    if(!emp) return;
+    const patch = {};
+    patch[key] = rint(val);
+    updateMonthFields(emp, ym, patch);
+  };
+  window.__empDefault = (empId, val)=>{
+    const emp = state.employees.find(e=>e.id===empId);
+    if(!emp) return;
+    emp.defaultDaily = rint(val);
+    save(); render();
+  };
+  window.__removeEmp = (empId)=> removeEmployee(empId);
+
+  const render = ()=>{
+    // update top pills
+    kSalesPerMan.textContent = fmtYen(state.settings.salesPerMan);
+    kSalesOt.textContent = fmtYen(state.settings.salesOtPerH);
+    kPayOt.textContent = fmtYen(state.settings.payOtPerH);
+    kEI.textContent = (state.settings.eiRate*100).toFixed(2) + "%";
+
+    // render employees
+    const ym = elMonth.value;
+    elEmpArea.innerHTML = state.employees.map(emp=>buildEmployeeCard(emp, ym)).join("");
+
+    // totals footer
+    const all = calcAll(ym);
+    elTotSales.textContent = fmtYen(all.ts);
+    elTotPay.textContent = fmtYen(all.tp);
+    elTotDed.textContent = fmtYen(all.td);
+    elTotGp.textContent = fmtYen(all.tg);
+  };
+
+  // events
+  elMonth.addEventListener("change", ()=>{ save(); render(); });
+  elAddEmp.addEventListener("click", addEmployee);
+  elSalaryChoices.addEventListener("change", ()=>{ parseChoices(); save(); render(); });
+
+  btnSettings.addEventListener("click", openSettings);
+  settingsClose.addEventListener("click", closeSettings);
+  settingsBg.addEventListener("click", (e)=>{ if(e.target===settingsBg) closeSettings(); });
+  settingsSave.addEventListener("click", ()=>{
+    const s = state.settings;
+    s.salesPerMan = rint(setSalesPerMan.value);
+    s.salesOtPerH = rint(setSalesOt.value);
+    s.payOtPerH = rint(setPayOt.value);
+    s.eiRate = Number(setEi.value||0)/100;
+    s.vatInRate = Number(setVatIn.value||0)/100;
+    s.payTaxRate = Number(setPayTax.value||0)/100;
+    save();
+    closeSettings();
+    render();
+  });
+
+  elShowSummary.addEventListener("click", openSummary);
+  summaryClose.addEventListener("click", closeSummary);
+  summaryBg.addEventListener("click", (e)=>{ if(e.target===summaryBg) closeSummary(); });
+
+  slipClose.addEventListener("click", closeSlip);
+  slipBg.addEventListener("click", (e)=>{ if(e.target===slipBg) closeSlip(); });
+  btnPrintSlip.addEventListener("click", ()=> window.print());
+
+  elExport.addEventListener("click", ()=>{
+    const ym = elMonth.value;
+    const s = state.settings;
+    // CSV: employee,date,man,otH,baseDaily,advance,sales,vatIn,payTotal,ei,payTax,gp
+    const lines = ["employee,date,man,otH,baseDaily,advance,sales,vatIn,payTotal,ei,payTax,gp"];
+    for(const emp of state.employees){
+      const mobj = ensureMonth(emp, ym);
+      for(const row of mobj.rows){
+        const c = calcRow(row, s);
+        lines.push([
+          `"${String(emp.name).replaceAll('"','""')}"`,
+          row.date,
+          rint(row.man),
+          Number(row.otH||0),
+          rint(row.baseDaily),
+          rint(row.advance||0),
+          c.sales,
+          c.vatIn,
+          c.payTotal,
+          c.ei,
+          c.payTax,
+          c.gp
+        ].join(","));
+      }
+    }
+    const blob = new Blob([lines.join("\n")], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `deme_${ym}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  // expose openSlip for summary button
+  window.__openSlip = (empId)=> openSlip(empId);
+
+  // start
+  parseChoices();
+  save();
+  render();
+
+})();
+</script>
+</body>
+</html>
