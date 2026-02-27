@@ -1,1 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出面・利益管理</title>
+<style>
+body{background:#0f172a;color:#fff;font-family:sans-serif;margin:0;padding:0}
+header{padding:15px;font-size:20px;font-weight:bold}
+button{padding:6px 10px;margin:3px;border-radius:6px;border:none}
+.add{background:#f59e0b;color:#000}
+.table-wrap{overflow-x:auto;padding:10px}
+table{border-collapse:collapse;min-width:1200px}
+th,td{border:1px solid #334155;padding:6px;text-align:center}
+th{background:#1e293b}
+input,select{background:#0f172a;color:#fff;border:1px solid #334155;border-radius:4px;padding:4px;width:80px}
+.total{background:#111827;font-weight:bold}
+.green{color:#22c55e}
+.red{color:#ef4444}
+</style>
+</head>
+<body>
 
+<header>出面・利益管理（複数従業員対応）</header>
+
+<div style="padding:10px">
+従業員名：
+<input id="empName" placeholder="名前">
+<button onclick="addEmployee()">追加</button>
+</div>
+
+<div id="employees"></div>
+
+<script>
+
+let employees=[];
+
+function addEmployee(){
+  const name=document.getElementById("empName").value;
+  if(!name)return;
+  employees.push({name,rows:[]});
+  document.getElementById("empName").value="";
+  render();
+}
+
+function addRow(empIndex){
+  employees[empIndex].rows.push({
+    date:"",
+    people:0,
+    overtime:0,
+    basePay:13000,
+    advance:0,
+    incomeTax:0
+  });
+  render();
+}
+
+function render(){
+  let html="";
+  employees.forEach((emp,ei)=>{
+    html+=`
+    <div style="margin:15px 0;padding:10px;border:1px solid #334155">
+      <h3>${emp.name}</h3>
+      <button class="add" onclick="addRow(${ei})">日追加</button>
+      <div class="table-wrap">
+      <table>
+      <tr>
+        <th>日付</th>
+        <th>人工</th>
+        <th>残業</th>
+        <th>日給</th>
+        <th>基本給</th>
+        <th>残業給</th>
+        <th>総支給</th>
+        <th>雇用保険(1.85%)</th>
+        <th>給与10%</th>
+        <th>前払</th>
+        <th>売上</th>
+        <th>受取税10%</th>
+        <th>粗利</th>
+      </tr>
+    `;
+    
+    let totalGross=0,totalProfit=0,totalSales=0;
+
+    emp.rows.forEach((r,ri)=>{
+      const overtimePay=Math.round(r.overtime*2031);
+      const basic=Math.round(r.basePay*r.people);
+      const gross=basic+overtimePay;
+      const insurance=Math.round(gross*0.0185);
+      const salaryTax=Math.round(gross*0.1);
+      const sales=Math.round((16000*r.people)+(2500*r.overtime));
+      const receiveTax=Math.round(sales*0.1);
+      const profit=sales-receiveTax-gross-salaryTax;
+
+      totalGross+=gross;
+      totalProfit+=profit;
+      totalSales+=sales;
+
+      html+=`
+      <tr>
+        <td><input type="date" value="${r.date}" onchange="update(${ei},${ri},'date',this.value)"></td>
+        <td><input type="number" value="${r.people}" onchange="update(${ei},${ri},'people',this.value)"></td>
+        <td><input type="number" value="${r.overtime}" onchange="update(${ei},${ri},'overtime',this.value)"></td>
+        <td>
+          <select onchange="update(${ei},${ri},'basePay',this.value)">
+            <option value="10500" ${r.basePay==10500?"selected":""}>10500</option>
+            <option value="13000" ${r.basePay==13000?"selected":""}>13000</option>
+          </select>
+        </td>
+        <td>${basic}</td>
+        <td>${overtimePay}</td>
+        <td>${gross}</td>
+        <td>${insurance}</td>
+        <td>${salaryTax}</td>
+        <td><input type="number" value="${r.advance}" onchange="update(${ei},${ri},'advance',this.value)"></td>
+        <td>${sales}</td>
+        <td class="green">${receiveTax}</td>
+        <td class="${profit<0?'red':'green'}">${profit}</td>
+      </tr>
+      `;
+    });
+
+    html+=`
+      <tr class="total">
+        <td colspan="6">月合計</td>
+        <td>${totalGross}</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>${totalSales}</td>
+        <td></td>
+        <td class="${totalProfit<0?'red':'green'}">${totalProfit}</td>
+      </tr>
+      </table>
+      </div>
+    </div>
+    `;
+  });
+
+  document.getElementById("employees").innerHTML=html;
+}
+
+function update(ei,ri,key,val){
+  employees[ei].rows[ri][key]=Number(val)||val;
+  render();
+}
+
+render();
+</script>
+
+</body>
+</html>
