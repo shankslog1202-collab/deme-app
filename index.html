@@ -174,9 +174,13 @@ tfoot td{background:rgba(15,26,46,.7); font-weight:900}
 }
 
 @media (max-width: 700px){
+  /* iPhoneでの重なり対策：横スクロール/固定列を無効化 */
   .sticky, .sticky2, .sticky3{ position: static !important; left: auto !important; z-index: auto !important; }
-  table.sheet th, table.sheet td{ min-width: 120px; }
+  .tableWrap{ overflow-x: visible !important; }
+  table.sheet{ min-width: 0 !important; width: 100% !important; }
+  table.sheet th, table.sheet td{ min-width: 0 !important; font-size: 12px; padding: 8px 10px; }
 }
+
 
 </style>
 </head>
@@ -191,7 +195,7 @@ tfoot td{background:rgba(15,26,46,.7); font-weight:900}
         <select id="monthSel"></select>
       </div>
       <button class="btn accent" id="addTodayBtn">今日を追加</button>
-      <button class="btn" id="addRowBtn">行追加</button>
+     
       <button class="btn" id="csvBtn">CSV</button>
       <button class="btn blue" id="allPayslipBtn">給与明細（全員）</button>
       <button class="btn" id="resetBtn" title="端末内データを初期化">リセット</button>
@@ -287,8 +291,7 @@ function defaultState(){
     employees: [
       // {id, name, wageA, wageB, defaultWageKey, overtimeRate}
       {id: uid(), name:"濱村拓也", wageA:10500, wageB:13000, defaultWageKey:"A", overtimeRate:2031},
-      {id: uid(), name:"（例）", wageA:13000, wageB:13000, defaultWageKey:"A", overtimeRate:2031},
-    ],
+      ],
     // entries[month][empId] = [{id, date, people, otH, wageKey, advance, incomeTax}]
     entries: {}
   };
@@ -333,12 +336,10 @@ document.getElementById("resetBtn").addEventListener("click", ()=>{
   refreshMonthSel();
   render();
 });
-document.getElementById("addTodayBtn").addEventListener("click", ()=>{
-  addTodayAll();
-});
-document.getElementById("addRowBtn").addEventListener("click", ()=>{
-  addBlankRowAll();
-});
+const addTodayBtn=document.getElementById("addTodayBtn");
+if(addTodayBtn) addTodayBtn.addEventListener("click", ()=>{ addTodayAll(); });
+const addRowBtn=document.getElementById("addRowBtn");
+if(addRowBtn) addRowBtn.addEventListener("click", ()=>{ addBlankRowAll(); });
 document.getElementById("addEmpBtn").addEventListener("click", ()=>{
   const name = (document.getElementById("newEmpName").value||"").trim();
   if(!name) return;
@@ -354,6 +355,55 @@ document.getElementById("csvBtn").addEventListener("click", ()=>{
 document.getElementById("allPayslipBtn").addEventListener("click", ()=>{
   openPayslip("ALL");
 });
+
+
+function normalizeDateInput(s){
+  // Accept YYYY/MM/DD or YYYY-MM-DD
+  if(!s) return "";
+  const t = String(s).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(t)) return t.replace(/-/g,"/");
+  if(/^\d{4}\/\d{2}\/\d{2}$/.test(t)) return t;
+  // try parse
+  const m = t.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if(m){
+    const y=m[1], mo=pad2(+m[2]), d=pad2(+m[3]);
+    return `${y}/${mo}/${d}`;
+  }
+  return t;
+}
+function promptDate(defaultSlash){
+  const def = defaultSlash || todayStr().replace(/-/g,"/");
+  const v = window.prompt("追加する日付を入力 (YYYY/MM/DD)", def);
+  if(v===null) return null;
+  return normalizeDateInput(v);
+}
+function addDayForEmp(empId){
+  ensureMonth();
+  const m = state.currentMonth;
+  const rows = state.entries[m][empId] || [];
+  const d = promptDate();
+  if(!d) return;
+  // If exists, just focus (no-op)
+  if(rows.some(r=> normalizeDateInput(r.date) === d)){
+    toast("その日付は既にあります");
+    return;
+  }
+  rows.push({date:d, labor:0, ot:0});
+  // sort by date
+  rows.sort((a,b)=> (normalizeDateInput(a.date)||"").localeCompare(normalizeDateInput(b.date)||""));
+  state.entries[m][empId]=rows;
+  save();
+  render();
+}
+function addBlankRowForEmp(empId){
+  ensureMonth();
+  const m=state.currentMonth;
+  const rows = state.entries[m][empId] || [];
+  rows.push({date:"", labor:0, ot:0});
+  state.entries[m][empId]=rows;
+  save();
+  render();
+}
 
 /*** Row operations (no confirmation) ***/
 function addTodayAll(){
@@ -504,6 +554,17 @@ function render(){
 
     const right = document.createElement("div");
     right.className="row";
+
+    const addDayBtn = document.createElement("button");
+    addDayBtn.className="btn acc";
+    addDayBtn.textContent="日追加";
+    addDayBtn.onclick = ()=> addDayForEmp(emp.id);
+
+    const addRowBtn2 = document.createElement("button");
+    addRowBtn2.className="btn";
+    addRowBtn2.textContent="行追加";
+    addRowBtn2.onclick = ()=> addBlankRowForEmp(emp.id);
+
     const payslipBtn = document.createElement("button");
     payslipBtn.className="btn blue";
     payslipBtn.textContent="給与明細";
@@ -518,6 +579,8 @@ function render(){
       saveState();
       render();
     };
+    right.appendChild(addDayBtn);
+    right.appendChild(addRowBtn2);
     right.appendChild(payslipBtn);
     right.appendChild(delEmpBtn);
 
@@ -715,7 +778,7 @@ const modal = document.getElementById("payslipModal");
 const sheetBody = document.getElementById("sheetBody");
 const sheetTitle = document.getElementById("sheetTitle");
 document.getElementById("closeSheetBtn").addEventListener("click", closePayslip);
-document.getElementById("printBtn").addEventListener("click", ()=> window.print());
+document.getElementById("printBtn").addEventListener("click", ()=> printPayslip());
 modal.addEventListener("click", (e)=>{ if(e.target===modal) closePayslip(); });
 
 function openPayslip(empIdOrAll){
@@ -754,6 +817,31 @@ function closePayslip(){
   modal.classList.remove("on");
   modal.setAttribute("aria-hidden","true");
 }
+function printPayslip(){
+  const body = document.getElementById("sheetBody");
+  const monthLabel = document.getElementById("sheetTitle")?.textContent || "給与明細";
+  const w = window.open("", "_blank");
+  if(!w){ toast("ポップアップがブロックされています"); return; }
+  const cssText = `
+    :root{ --bg:#0b1220; --panel:#111a2c; --line:#22304a; --text:#eef3ff; --muted:#a9b6d3; }
+    body{ font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif; margin:24px; color:#111; }
+    h1{ font-size:18px; margin:0 0 12px; }
+    .box{ border:1px solid #ddd; border-radius:12px; padding:16px; }
+    table{ width:100%; border-collapse: collapse; margin-top:10px; }
+    th,td{ border:1px solid #ddd; padding:8px; font-size:12px; text-align:left; }
+    .muted{ color:#555; }
+    @page{ size: A4; margin: 12mm; }
+  `;
+  w.document.open();
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${monthLabel}</title><style>${cssText}</style></head><body>`);
+  w.document.write(`<h1>${monthLabel}</h1><div class="box">${body.innerHTML}</div>`);
+  w.document.write(`</body></html>`);
+  w.document.close();
+  w.focus();
+  // allow paint
+  setTimeout(()=>{ w.print(); }, 300);
+}
+
 function buildPayslipHTML({name, period, sums}){
   const payTotal = sums.payTotal;
   const deductions = round(sums.eiEmp + sums.incomeTax + sums.advance);
