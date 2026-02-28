@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0b1220"/>
 <link rel="manifest" href="manifest.json">
 <title>出面・利益管理（複数従業員）</title>
-<style>
+<style id="appStyles">
 :root{
   --bg:#0b1220; --panel:#0f1a2e; --card:#101b30; --card2:#0f1a2e;
   --text:#e8edf7; --muted:#9db0d1; --line:#22314f;
@@ -172,6 +172,12 @@ tfoot td{background:rgba(15,26,46,.7); font-weight:900}
   .modal{position:static; inset:auto; display:block !important; background:transparent; padding:0}
   .sheet{border-radius:0; box-shadow:none; width:100%}
 }
+
+@media (max-width: 700px){
+  .sticky, .sticky2, .sticky3{ position: static !important; left: auto !important; z-index: auto !important; }
+  table.sheet th, table.sheet td{ min-width: 120px; }
+}
+
 </style>
 </head>
 <body>
@@ -369,7 +375,7 @@ function addTodayAll(){
 function addBlankRowAll(){
   const ym = state.currentMonth;
   const {y,m} = parseYM(ym);
-  const iso = isoDate(y,m,1);
+  const iso = \"\";
   for(const emp of state.employees){
     const list = state.entries[ym][emp.id] || [];
     list.unshift({id: uid(), date: iso, people:0, otH:0, wageKey: emp.defaultWageKey || "A", advance:0, incomeTax:0});
@@ -618,15 +624,8 @@ function render(){
     // fill body rows
     const tbody = tableWrap.querySelector(`#tbody-${emp.id}`);
     if(list.length===0){
-      // init with all days of month
-      const n = daysInMonth(y,m);
-      const rows = [];
-      for(let d=1; d<=n; d++){
-        rows.push({id: uid(), date: isoDate(y,m,d), people:0, otH:0, wageKey: emp.defaultWageKey||"A", advance:0, incomeTax:0});
-      }
-      state.entries[ym][emp.id] = rows;
-      saveState();
-      return render(); // rerender
+      tbody.innerHTML = `<tr><td class="muted" colspan="9">まだデータがありません。「今日を追加」または「行追加」で1行ずつ追加してください。</td></tr>`;
+      return;
     }
     // sort by date asc
     list.sort((a,b)=> a.date.localeCompare(b.date));
